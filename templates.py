@@ -1,8 +1,57 @@
 import base64
 import os
-
+import smtplib
 import msal
 import requests
+import pandas as pd
+
+def init_ignore_list(dump_dir: str) -> list:
+    """
+    Initialize the ignore list from a CSV file.
+    Args:
+        dump_dir (str): The directory where the CSV file is located.
+    Returns:
+        list: The ignore list loaded from the CSV file.
+    """
+    ignore_filename = os.path.join(dump_dir, 'ignore_list.csv')
+    if not os.path.exists(ignore_filename):
+        return []
+    df = pd.read_csv(ignore_filename)
+    return list(df.iloc[:, 0])
+
+
+def add_to_list_file(msg:str, filename:str):
+    """
+    Add a message to a list file.
+
+    Args:
+        msg (str): The message to be added.
+        filename (str): The path to the file.
+
+    Returns:
+        None
+    """
+    if os.path.exists(filename):
+        df = pd.read_csv(filename)
+    else:
+        df = pd.DataFrame([], columns=['msg_id'])
+    df.loc[len(df)] = [msg]
+    df.to_csv(filename, index=False)
+
+
+def add_ignore_list(msg:str, dump_dir:str):
+    """
+    Add a message to the ignore list file.
+
+    Args:
+        msg (str): The message to be added to the ignore list.
+        dump_dir (str): The directory where the ignore list file is located.
+
+    Returns:
+        None
+    """
+    ignore_filename = os.path.join(dump_dir, 'ignore_list.csv')
+    add_to_list_file(msg, ignore_filename)
 
 
 def get_auth_token(client_id:str, tenant_id:str, username:str, password:str) -> str:
@@ -118,6 +167,8 @@ if __name__ == '__main__':
     tenant_id = os.getenv('TENANT_ID')
     username = os.getenv('USERNAME')
     password = os.getenv('PASSWORD')
+    server = os.getenv('SMTP_SERVER')
+    port = os.getenv('SMTP_PORT')
     access_token = get_auth_token(client_id, tenant_id, username, password) 
     folder_id = get_folder_id(access_token, 'Вхідні') 
     messages_id = get_messages(access_token, folder_id)
